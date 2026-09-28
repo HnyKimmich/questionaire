@@ -2,6 +2,8 @@ const http = require('node:http');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { cleanSubmission: cleanQuestionnaireSubmission, fromDatabase } = require('./lib/submissions');
+const questionnaire = require('./public/questionnaire');
 
 loadEnvFile();
 
@@ -13,17 +15,6 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'submissions.json');
 const MAX_BODY = 64 * 1024;
 const COOKIE_NAME = 'questionnaire_admin';
-
-const fields = {
-  name: { max: 60, required: true },
-  contact: { max: 120, required: true },
-  identity: { max: 30, required: true },
-  subjects: { max: 200, required: true },
-  goal: { max: 1200, required: true },
-  availability: { max: 500, required: true },
-  mode: { max: 30, required: true },
-  notes: { max: 1200, required: false }
-};
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -95,15 +86,7 @@ function updateSubmissions(updater) {
 }
 
 function cleanSubmission(body) {
-  const result = {};
-  for (const [key, rule] of Object.entries(fields)) {
-    const value = typeof body[key] === 'string' ? body[key].trim() : '';
-    if (rule.required && !value) throw Object.assign(new Error(`请填写${key}`), { status: 400 });
-    if (value.length > rule.max) throw Object.assign(new Error('填写内容过长，请适当精简'), { status: 400 });
-    result[key] = value;
-  }
-  if (body.consent !== true) throw Object.assign(new Error('请先同意信息使用说明'), { status: 400 });
-  return result;
+  return cleanQuestionnaireSubmission(body);
 }
 
 function sign(value) {
@@ -159,9 +142,16 @@ async function serveStatic(req, res, pathname) {
 async function handleApi(req, res, pathname) {
   if (req.method === 'POST' && pathname === '/api/submissions') {
     const body = cleanSubmission(await readJson(req));
-    const record = { id: crypto.randomUUID(), submittedAt: new Date().toISOString(), ...body };
-    await updateSubmissions((records) => [...records, record]);
-    return json(res, 201, { ok: true, id: record.id });
+    const now = new Date().toISOString();
+    const record = { id: crypto.randomUUID(), submitted_at: now, updated_at: now, ...body };
+    let savedRecord = record;
+    await updateSubmissions((records) => {
+      const existing = records.find((item) => item.normalized_name === body.normalized_name);
+      if (!existing) return [...records, record];
+      savedRecord = { ...record, id: existing.id };
+      return records.map((item) => item.id === existing.id ? savedRecord : item);
+    });
+    return json(res, 201, { ok: true, id: savedRecord.id });
   }
 
   if (req.method === 'POST' && pathname === '/api/admin/login') {
@@ -179,14 +169,19 @@ async function handleApi(req, res, pathname) {
 
   if (req.method === 'GET' && pathname === '/api/admin/submissions') {
     const records = await loadSubmissions();
-    return json(res, 200, { submissions: records.slice().reverse() });
+    return json(res, 200, { submissions: records.map(fromDatabase).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))) });
   }
 
   if (req.method === 'GET' && pathname === '/api/admin/export') {
-    const records = await loadSubmissions();
-    const columns = ['提交时间', '姓名', '联系方式', '身份', '科目', '辅导目标', '可用时间', '形式', '补充说明'];
-    const keys = ['submittedAt', 'name', 'contact', 'identity', 'subjects', 'goal', 'availability', 'mode', 'notes'];
-    const csv = '\uFEFF' + [columns.map(csvCell).join(','), ...records.map((record) => keys.map((key) => csvCell(record[key])).join(','))].join('\r\n');
+    const records = (await loadSubmissions()).map(fromDatabase);
+    const questions = questionnaire.chapters.flatMap((chapter) => chapter.questions);
+    const columns = ['更新时间', '姓名', ...questions.flatMap((question) => [question.prompt, `${question.prompt}（补充）`])];
+    const rows = records.map((record) => [record.updatedAt, record.name, ...questions.flatMap((question) => {
+      const value = record.answers[question.id];
+      const text = Array.isArray(value) ? value.join(question.type === 'rank' ? ' > ' : '、') : (value || '');
+      return [text, record.answers[`${question.id}__note`] || ''];
+    })]);
+    const csv = '\uFEFF' + [columns, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
     res.writeHead(200, {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="submissions-${new Date().toISOString().slice(0, 10)}.csv"`

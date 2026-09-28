@@ -7,7 +7,7 @@ module.exports = async function handler(req, res) {
   if (!allowMethods(req, res, ['GET'])) return;
   if (!requireAdmin(req, res, isAdmin)) return;
   try {
-    const rows = await supabaseRequest('submissions?select=*&order=submitted_at.desc');
+    const rows = await supabaseRequest('submissions?select=*&order=updated_at.desc');
     sendJson(res, 200, { submissions: rows.map(fromDatabase) });
   } catch (error) { handleError(res, error); }
 };

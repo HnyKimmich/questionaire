@@ -2,19 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { cleanSubmission } = require('../lib/submissions');
 
-const valid = { name:'小林', contact:'test@example.com', identity:'我想找辅导', subjects:'数学', goal:'准备考试', availability:'周末', mode:'线上', notes:'', consent:true };
+const valid = { name:'小林', questionnaireVersion:'2026-09-29.1', answers:{ zodiac:'双鱼座', ai_uses:['辅助学习'] } };
 
 test('accepts and trims a valid submission', () => {
   const result = cleanSubmission({ ...valid, name:'  小林  ' });
   assert.equal(result.name, '小林');
+  assert.equal(result.normalized_name, '小林');
+  assert.deepEqual(result.answers.ai_uses, ['辅助学习']);
 });
 
 test('rejects missing required fields', () => {
-  assert.throws(() => cleanSubmission({ ...valid, goal:'' }), /请完整填写必填项/);
-});
-
-test('requires explicit consent', () => {
-  assert.throws(() => cleanSubmission({ ...valid, consent:false }), /信息使用说明/);
+  assert.throws(() => cleanSubmission({ ...valid, name:'' }), /请填写姓名/);
 });
 
 test('rejects the honeypot field used by bots', () => {

@@ -4,10 +4,13 @@
 
 ## 功能
 
-- 响应式中文问卷，手机和电脑均可填写
+- 每屏一个主题的响应式中文问卷，手机和电脑均可填写
+- 单选、多选、排序和一层条件追问；作答后可揭示 tutor 的固定回答
+- 带版本号的浏览器草稿自动保存与恢复
+- 仅姓名必填；同名提交自动覆盖旧回复
 - 服务端字段校验和隐藏蜜罐反垃圾
 - 密码保护的 `/admin` 管理后台
-- 查看、删除回复及导出 UTF-8 CSV
+- 按学生查看、按问题统计、删除回复及导出 UTF-8 CSV
 - HttpOnly 签名会话；数据库密钥不会发送到浏览器
 - Supabase 数据表启用 RLS，并撤销浏览器角色权限
 
@@ -19,7 +22,7 @@
 
 1. 注册并创建一个 Supabase 项目。
 2. 打开项目的 **SQL Editor**。
-3. 复制 [`supabase/schema.sql`](supabase/schema.sql) 的全部内容并运行。
+3. 复制 [`supabase/schema.sql`](supabase/schema.sql) 的全部内容并运行。旧版本已建表的项目也需要重新运行一次，以完成字段迁移和同名唯一约束。
 4. 在项目的 **Connect** 或 **Settings → API Keys** 中保存以下两项：
    - Project URL，例如 `https://xxxx.supabase.co`
    - Secret key，格式通常为 `sb_secret_...`
@@ -93,9 +96,4 @@ questionnaire-site/
 
 ## 修改问卷
 
-如果增删字段，需要同步修改：
-
-1. `public/index.html` 中的表单；
-2. `lib/submissions.js` 中的服务端校验；
-3. `supabase/schema.sql` 中的数据表；
-4. `public/admin.js` 中的后台展示和 `api/admin/export.js` 中的 CSV 列。
+题目集中定义在 `public/questionnaire.js`。增删题目或修改 tutor 回答时，只需更新这份配置；学生端、后台和 CSV 导出会共同读取它。修改 `version` 会让旧版浏览器草稿自动失效。

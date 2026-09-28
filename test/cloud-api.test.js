@@ -17,7 +17,7 @@ function responseMock() {
   };
 }
 
-const valid = { name:'小林', contact:'test@example.com', identity:'我想找辅导', subjects:'数学', goal:'准备考试', availability:'周末', mode:'线上', notes:'', consent:true };
+const valid = { name:'小林', questionnaireVersion:'2026-09-29.1', answers:{ zodiac:'双鱼座' } };
 
 test('creates and verifies an admin session', () => {
   const token = createSession();
@@ -39,9 +39,11 @@ test('cloud submit handler writes through the secret Supabase API', async () => 
     await submitHandler(req, res);
     assert.equal(res.statusCode, 201);
     assert.equal(JSON.parse(res.body).ok, true);
-    assert.equal(request.url, 'https://example.supabase.co/rest/v1/submissions');
+    assert.equal(request.url, 'https://example.supabase.co/rest/v1/submissions?on_conflict=normalized_name');
     assert.equal(request.options.headers.apikey, 'sb_secret_test');
     assert.equal(JSON.parse(request.options.body).name, '小林');
+    assert.equal(JSON.parse(request.options.body).normalized_name, '小林');
+    assert.match(request.options.headers.Prefer, /merge-duplicates/);
   } finally {
     global.fetch = originalFetch;
   }

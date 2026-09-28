@@ -11,6 +11,8 @@ const allQuestions = questionnaire.chapters.flatMap((chapter) => chapter.questio
 let answers = {};
 let currentStep = 0;
 let saveTimer;
+let draggedRankItem = null;
+let pointerRankDrag = null;
 
 function escapeHtml(value) {
   const element = document.createElement('div');
@@ -30,11 +32,6 @@ function isAnswered(question) {
 
 function isVisible(question) {
   return !question.condition || answers[question.condition.question] === question.condition.equals;
-}
-
-function answerText(question) {
-  if (Array.isArray(question.tutorAnswer)) return `<ol>${question.tutorAnswer.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ol>`;
-  return `<p>${escapeHtml(question.tutorAnswer)}</p>`;
 }
 
 function detailField(question, option, selected) {
@@ -58,10 +55,10 @@ function renderRank(question) {
   const byValue = new Map(question.options.map((raw) => { const option = optionData(raw); return [option.value, option]; }));
   const stored = Array.isArray(answers[question.id]) ? answers[question.id] : [];
   const order = [...stored, ...question.options.map((raw) => optionData(raw).value).filter((value) => !stored.includes(value))];
-  return `<div class="rank-help">用箭头调整顺序，排好后点击确认。</div><ol class="rank-list" data-question="${question.id}">${order.map((value, index) => {
+  return `<div class="rank-help">拖动排序项或使用箭头调整顺序，排好后点击确认。</div><ol class="rank-list" data-question="${question.id}">${order.map((value, index) => {
     const option = byValue.get(value);
     const details = answers[`${question.id}__detail`] || {};
-    return `<li data-value="${escapeHtml(value)}"><span class="rank-number">${index + 1}</span><div class="rank-content"><strong>${escapeHtml(option.label)}</strong>${option.detail || option.custom ? `<input class="rank-detail" data-question="${question.id}" data-option="${escapeHtml(value)}" value="${escapeHtml(details[value] || '')}" maxlength="160" placeholder="${option.custom ? '写下自定义内容' : '具体是？'}">` : ''}</div><div class="rank-controls"><button type="button" class="rank-up" aria-label="上移" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="rank-down" aria-label="下移" ${index === order.length - 1 ? 'disabled' : ''}>↓</button></div></li>`;
+    return `<li data-value="${escapeHtml(value)}" draggable="true"><button class="drag-handle" type="button" aria-label="拖动排序">⠿</button><span class="rank-number">${index + 1}</span><div class="rank-content"><strong>${escapeHtml(option.label)}</strong>${option.detail || option.custom ? `<input class="rank-detail" data-question="${question.id}" data-option="${escapeHtml(value)}" value="${escapeHtml(details[value] || '')}" maxlength="160" placeholder="${option.custom ? '写下自定义内容' : '具体是？'}">` : ''}</div><div class="rank-controls"><button type="button" class="rank-up" aria-label="上移" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="rank-down" aria-label="下移" ${index === order.length - 1 ? 'disabled' : ''}>↓</button></div></li>`;
   }).join('')}</ol><button class="confirm-rank${isAnswered(question) ? ' confirmed' : ''}" type="button" data-question="${question.id}">${isAnswered(question) ? '✓ 已确认，可继续调整' : '确认这个排序'}</button>`;
 }
 
@@ -70,7 +67,7 @@ function renderQuestion(question) {
   const answerControl = question.type === 'rank' ? renderRank(question) : question.type === 'text'
     ? `<input class="text-answer" name="${question.id}" value="${escapeHtml(answers[question.id] || '')}" maxlength="500" placeholder="${escapeHtml(question.placeholder || '写下你的回答')}">`
     : renderChoice(question);
-  return `<article class="question-card${hidden ? ' hidden' : ''}" data-question-card="${question.id}">${question.group ? `<p class="question-group">${escapeHtml(question.group)}</p>` : ''}<div class="question-heading"><h3>${escapeHtml(question.prompt)}</h3><span>选答</span></div>${answerControl}<label class="question-note"><span>还想补充的话</span><textarea data-note="${question.id}" maxlength="600" rows="2" placeholder="可以留空">${escapeHtml(answers[`${question.id}__note`] || '')}</textarea></label>${question.tutorAnswer ? `<aside class="tutor-answer${isAnswered(question) ? '' : ' hidden'}" data-tutor="${question.id}"><p class="tutor-label">轮到我回答</p>${answerText(question)}</aside>` : ''}</article>`;
+  return `<article class="question-card${hidden ? ' hidden' : ''}" data-question-card="${question.id}">${question.group ? `<p class="question-group">${escapeHtml(question.group)}</p>` : ''}<div class="question-heading"><h3>${escapeHtml(question.prompt)}</h3><span>选答</span></div>${answerControl}<label class="question-note"><span>还想补充的话</span><textarea data-note="${question.id}" maxlength="600" rows="2" placeholder="可以留空">${escapeHtml(answers[`${question.id}__note`] || '')}</textarea></label></article>`;
 }
 
 function renderChapters() {
@@ -102,8 +99,6 @@ function refreshQuestion(questionId) {
   const question = allQuestions.find((item) => item.id === questionId);
   const card = document.querySelector(`[data-question-card="${questionId}"]`);
   if (!question || !card) return;
-  const tutor = card.querySelector(`[data-tutor="${questionId}"]`);
-  if (tutor) tutor.classList.toggle('hidden', !isAnswered(question));
   allQuestions.filter((item) => item.condition && item.condition.question === questionId).forEach((dependent) => {
     const dependentCard = document.querySelector(`[data-question-card="${dependent.id}"]`);
     const visible = isVisible(dependent);
@@ -203,6 +198,61 @@ chaptersView.addEventListener('click', (event) => {
     storeRank(list, true); confirmButton.textContent = '✓ 已确认，可继续调整'; confirmButton.classList.add('confirmed'); refreshQuestion(confirmButton.dataset.question);
   }
 });
+
+chaptersView.addEventListener('dragstart', (event) => {
+  const item = event.target.closest('.rank-list li');
+  if (!item || event.target.closest('input,.rank-controls')) { event.preventDefault(); return; }
+  draggedRankItem = item;
+  item.classList.add('dragging');
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', item.dataset.value);
+});
+chaptersView.addEventListener('dragover', (event) => {
+  const target = event.target.closest('.rank-list li');
+  if (!draggedRankItem || !target || target === draggedRankItem || target.parentNode !== draggedRankItem.parentNode) return;
+  event.preventDefault();
+  const box = target.getBoundingClientRect();
+  target.parentNode.insertBefore(draggedRankItem, event.clientY < box.top + box.height / 2 ? target : target.nextElementSibling);
+  updateRankNumbers(target.parentNode);
+});
+chaptersView.addEventListener('drop', (event) => { if (draggedRankItem) event.preventDefault(); });
+chaptersView.addEventListener('dragend', () => {
+  if (!draggedRankItem) return;
+  const list = draggedRankItem.parentNode;
+  draggedRankItem.classList.remove('dragging');
+  draggedRankItem = null;
+  updateRankNumbers(list); storeRank(list);
+});
+
+chaptersView.addEventListener('pointerdown', (event) => {
+  if (event.pointerType === 'mouse') return;
+  const handle = event.target.closest('.drag-handle');
+  if (!handle) return;
+  event.preventDefault();
+  const item = handle.closest('li');
+  pointerRankDrag = { item, list: item.parentNode, pointerId: event.pointerId, handle };
+  item.classList.add('dragging');
+  try { handle.setPointerCapture(event.pointerId); } catch {}
+});
+window.addEventListener('pointermove', (event) => {
+  if (!pointerRankDrag || event.pointerId !== pointerRankDrag.pointerId) return;
+  event.preventDefault();
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.rank-list li');
+  if (!target || target === pointerRankDrag.item || target.parentNode !== pointerRankDrag.list) return;
+  const box = target.getBoundingClientRect();
+  pointerRankDrag.list.insertBefore(pointerRankDrag.item, event.clientY < box.top + box.height / 2 ? target : target.nextElementSibling);
+  updateRankNumbers(pointerRankDrag.list);
+}, { passive: false });
+function finishPointerRank(event) {
+  if (!pointerRankDrag || event.pointerId !== pointerRankDrag.pointerId) return;
+  const { item, list, handle, pointerId } = pointerRankDrag;
+  item.classList.remove('dragging');
+  try { handle.releasePointerCapture(pointerId); } catch {}
+  pointerRankDrag = null;
+  updateRankNumbers(list); storeRank(list);
+}
+window.addEventListener('pointerup', finishPointerRank);
+window.addEventListener('pointercancel', finishPointerRank);
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();

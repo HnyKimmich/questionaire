@@ -4,8 +4,8 @@
   if (root) root.PEERLY_QUESTIONNAIRE = questionnaire;
 })(typeof window !== 'undefined' ? window : null, function buildQuestionnaire() {
   return {
-    version: '2026-09-29.1',
-    title: '在见面之前，先认识一下彼此',
+    version: '2026-09-29.2',
+    title: '在见面之前，先认识一下你',
     chapters: [
       {
         id: 'beliefs',
@@ -20,7 +20,6 @@
             prompt: '你的星座是什么？',
             type: 'single',
             options: ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'],
-            tutorAnswer: '双鱼座'
           },
           {
             id: 'zodiac_belief',
@@ -28,7 +27,6 @@
             prompt: '你相信星座吗？',
             type: 'single',
             options: ['信', '不信'],
-            tutorAnswer: '信。上升天秤，月亮天蝎。'
           },
           {
             id: 'mbti',
@@ -36,7 +34,6 @@
             prompt: '你的MBTI是什么？',
             type: 'single',
             options: ['INTJ', 'INTP', 'ENTJ', 'ENTP', 'INFJ', 'INFP', 'ENFJ', 'ENFP', 'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ', 'ISTP', 'ISFP', 'ESTP', 'ESFP'],
-            tutorAnswer: 'ENFP'
           },
           {
             id: 'mbti_belief',
@@ -44,14 +41,13 @@
             prompt: '你相信MBTI吗？',
             type: 'single',
             options: ['信', '不信'],
-            tutorAnswer: '信'
           }
         ]
       },
       {
         id: 'high_school',
         number: '02',
-        title: '聊聊高中生活',
+        title: '何以高中',
         eyebrow: 'BEFORE COLLEGE',
         description: '看看高中留下了什么，也看看你带来了什么。',
         questions: [
@@ -73,7 +69,6 @@
             prompt: '你高中最拿手的科目是什么？',
             type: 'single',
             options: ['语文', '数学', '英语', '政治', '历史', '地理', '物理', '化学', '生物'],
-            tutorAnswer: '数学'
           },
           {
             id: 'favorite_subject',
@@ -81,14 +76,12 @@
             prompt: '你高中最喜欢的科目是什么？',
             type: 'single',
             options: ['语文', '数学', '英语', '政治', '历史', '地理', '物理', '化学', '生物'],
-            tutorAnswer: '语文'
           },
           {
             id: 'same_major',
             prompt: '在高中幻想大学的时候，想读的专业是现在的这个吗？',
             type: 'single',
             options: ['是', '不是'],
-            tutorAnswer: '不是。高中时想过数学、物理学、哲学和心理学。'
           },
           {
             id: 'original_major',
@@ -102,7 +95,7 @@
       {
         id: 'college',
         number: '03',
-        title: '谈谈大学生活',
+        title: '当我们谈到大学',
         eyebrow: 'CAMPUS LIFE',
         description: '大学没有标准答案，先看看你最在意什么。',
         questions: [
@@ -116,7 +109,6 @@
               '找npy', '入党', '结识好友，形成自己的圈子',
               '参加科研/竞赛->学术积累', '交换/留学->看看世界', '坚持运动->保持健康'
             ],
-            tutorAnswer: ['参加科研/竞赛->学术积累', '结识好友，形成自己的圈子', '坚持运动->保持健康', '卷绩点->保研', '培养某一门爱好', '交换/留学->看看世界', '找npy', '刷实习->就业', '入党']
           },
           {
             id: 'first_meeting_topics',
@@ -129,7 +121,7 @@
       {
         id: 'ai',
         number: '04',
-        title: '聊聊AI',
+        title: '关于大模型',
         eyebrow: 'AI & YOU',
         description: '不考技术，只想了解你现在怎样和 AI 相处。',
         questions: [
@@ -138,7 +130,6 @@
             prompt: '你现在最经常用的大模型是什么?',
             type: 'single',
             options: ['kimi', '豆包', '千问', 'deepseek', 'chatgpt', 'gemini', 'Claude', '腾讯元宝', '文心一言', '智谱清言', 'Grok', { value: '其他', label: '其他', detail: true }],
-            tutorAnswer: 'gpt'
           },
           {
             id: 'agent_contact',

@@ -1,99 +1,83 @@
-# Peerly 同伴辅导问卷
+# Peerly
 
-可从 GitHub 部署的中文全栈问卷：静态前端部署在 Vercel，服务端 API 使用 Vercel Functions，问卷数据持久化到 Supabase Postgres。
+Peerly 是一个面向小规模同伴辅导场景的中文全栈问卷网站。项目不依赖前端框架，可在本地直接运行，也可使用 Vercel 和 Supabase 部署。
 
 ## 功能
 
-- 每屏一个主题的响应式中文问卷，手机和电脑均可填写
-- 单选、多选、排序和一层条件追问；作答后可揭示 tutor 的固定回答
-- 带版本号的浏览器草稿自动保存与恢复
-- 仅姓名必填；同名提交自动覆盖旧回复
-- 服务端字段校验和隐藏蜜罐反垃圾
-- 密码保护的 `/admin` 管理后台
-- 按学生查看、按问题统计、删除回复及导出 UTF-8 CSV
-- HttpOnly 签名会话；数据库密钥不会发送到浏览器
-- Supabase 数据表启用 RLS，并撤销浏览器角色权限
+- 分章节、单页式填写流程，适配桌面端和移动端
+- 支持单选、多选、排序、文本输入和一层条件追问
+- 除姓名外均为选答，可前后切换并保留填写状态
+- 浏览器自动保存带版本号的草稿，支持继续填写或重新开始
+- 按规范化姓名覆盖旧提交，只保留每位填写者的最新回复
+- 密码保护的管理后台，支持按填写者查看和按问题统计
+- 支持删除回复和导出 UTF-8 CSV
+- 服务端校验、反垃圾蜜罐、签名会话和安全响应头
+- Supabase RLS 与服务端密钥隔离，浏览器无法直接访问数据库
 
-## 推荐部署：Vercel + Supabase
+## 技术栈
 
-这是本项目已经实现并推荐给少量问卷使用的方案。20 人左右的用量远低于两边的免费额度。
-
-### 1. 创建 Supabase 数据库
-
-1. 注册并创建一个 Supabase 项目。
-2. 打开项目的 **SQL Editor**。
-3. 复制 [`supabase/schema.sql`](supabase/schema.sql) 的全部内容并运行。旧版本已建表的项目也需要重新运行一次，以完成字段迁移和同名唯一约束。
-4. 在项目的 **Connect** 或 **Settings → API Keys** 中保存以下两项：
-   - Project URL，例如 `https://xxxx.supabase.co`
-   - Secret key，格式通常为 `sb_secret_...`
-
-Secret key 只能放在服务端环境变量中，不能写入 GitHub 或浏览器代码。
-
-### 2. 推送到 GitHub
-
-将包含 `questionnaire-site` 的仓库推送到 GitHub。不要提交 `.env` 文件。
-
-### 3. 从 GitHub 导入 Vercel
-
-1. 在 Vercel 选择 **Add New → Project**，导入 GitHub 仓库。
-2. 将 **Root Directory** 设为 `questionnaire-site`。
-3. Framework Preset 选择 **Other**；不需要填写 Build Command。
-4. 添加环境变量：
-
-| 名称 | 值 |
-| --- | --- |
-| `SUPABASE_URL` | 第 1 步的 Project URL |
-| `SUPABASE_SECRET_KEY` | 第 1 步的 Secret key |
-| `ADMIN_PASSWORD` | 自己设置的强密码 |
-| `SESSION_SECRET` | 至少 32 位随机字符串 |
-
-5. 点击 **Deploy**。以后每次推送 GitHub，Vercel 都会自动重新部署。
-
-部署完成后：
-
-- `https://你的域名/` 是公开问卷。
-- `https://你的域名/admin` 是管理后台。
-
-如先部署后才补环境变量，需要在 Vercel 的 Deployments 页面重新部署一次。
-
-## 本地预览
-
-只预览页面和使用本地 JSON 存储时：
-
-```powershell
-Copy-Item .env.example .env
-node server.js
-```
-
-打开 <http://localhost:3000>；后台地址为 <http://localhost:3000/admin>。本地服务使用 `data/submissions.json`，仅用于开发，云端部署使用 Supabase。
-
-如已安装 Vercel CLI 并希望调试云端函数，可运行 `vercel dev`。
-
-## 后端方案比较
-
-| 方案 | 适合度 | 优点 | 注意事项 |
-| --- | --- | --- | --- |
-| **Vercel Functions + Supabase** | 推荐，已实现 | GitHub 自动部署；数据库持久化；免费额度充足；后台 API 清晰 | 首次需要创建 Supabase 表并配置 4 个环境变量 |
-| Cloudflare Pages Functions + D1 | 很适合 | 免费额度大；全球边缘运行；前后端都在 Cloudflare | D1 绑定和迁移配置比当前方案稍复杂，需要改写 API 运行时 |
-| Render Web Service + Postgres | 可选 | 传统常驻 Node 后端，结构容易理解 | 免费 Web Service 会休眠；免费 Postgres 有期限，不建议依赖本地文件存储 |
-
-不建议把回复继续保存在部署服务器的 JSON 文件中：Serverless 文件系统或免费 Render 文件系统可能在重启、休眠或重新部署后丢失。
+- 前端：原生 HTML、CSS、JavaScript
+- 本地服务：Node.js HTTP Server + JSON 文件
+- 云端接口：Vercel Functions
+- 数据库：Supabase Postgres
+- 测试：Node.js 内置测试运行器
 
 ## 项目结构
 
 ```text
 questionnaire-site/
-├─ api/                  Vercel 服务端函数
-│  ├─ submissions.js     公开提交接口
-│  └─ admin/             登录、退出、读取、删除、导出接口
-├─ lib/                  服务端认证、校验和 Supabase 公共模块
-├─ public/               问卷和管理后台前端
-├─ supabase/schema.sql   数据库建表及权限脚本
-├─ test/                 Node 单元测试
-├─ server.js             本地 JSON 开发服务器
-└─ vercel.json           Vercel 路由和安全响应头
+├─ api/                    Vercel Serverless API
+│  └─ admin/               登录、退出、回复管理和 CSV 导出
+├─ lib/                    认证、校验、HTTP 和 Supabase 公共模块
+├─ public/                 公开问卷与管理后台前端
+│  └─ questionnaire.js     问卷结构和界面共用配置
+├─ supabase/schema.sql     数据库结构、迁移和权限配置
+├─ test/                   自动化测试
+├─ server.js               本地开发服务器
+└─ vercel.json             Vercel 路由与安全响应头
 ```
 
-## 修改问卷
+## 本地开发
 
-题目集中定义在 `public/questionnaire.js`。增删题目或修改 tutor 回答时，只需更新这份配置；学生端、后台和 CSV 导出会共同读取它。修改 `version` 会让旧版浏览器草稿自动失效。
+项目需要 Node.js 20 或更高版本。
+
+```powershell
+node server.js
+```
+
+- 公开页面：<http://localhost:3000>
+- 管理后台：<http://localhost:3000/admin>
+- 本地回复保存在 `data/submissions.json`
+
+运行测试：
+
+```powershell
+node --test
+```
+
+## 配置与维护
+
+问卷配置集中在 `public/questionnaire.js`。学生端、管理后台和 CSV 导出共同读取该配置；修改问卷结构后应同步更新其中的 `version`，使旧版浏览器草稿失效。
+
+服务端使用以下环境变量：
+
+| 变量 | 用途 |
+| --- | --- |
+| `ADMIN_PASSWORD` | 管理后台密码 |
+| `SESSION_SECRET` | 管理员会话签名密钥，至少 32 位 |
+| `SUPABASE_URL` | Supabase Project URL |
+| `SUPABASE_SECRET_KEY` | Supabase 服务端 Secret key |
+
+不要提交 `.env`，也不要将 Supabase Secret key 放入浏览器代码。
+
+## 部署
+
+推荐使用 GitHub、Vercel 和 Supabase：
+
+1. 在 Supabase 创建项目，在 SQL Editor 中运行 `supabase/schema.sql`。已有旧表时也需重新运行该脚本以完成迁移。
+2. 获取 Supabase Project URL 和 Secret key。
+3. 将项目推送到 GitHub，并在 Vercel 中导入仓库。
+4. 若仓库外层还包含其他目录，将 Vercel 的 Root Directory 设为 `questionnaire-site`；Framework Preset 选择 **Other**，无需 Build Command。
+5. 在 Vercel 配置 `SUPABASE_URL`、`SUPABASE_SECRET_KEY`、`ADMIN_PASSWORD` 和 `SESSION_SECRET`，然后部署。
+
+部署完成后，根路径为公开问卷，`/admin` 为管理后台。环境变量发生变化后需要重新部署。

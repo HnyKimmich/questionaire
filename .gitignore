@@ -1,0 +1,5 @@
+data/submissions.json
+.env
+node_modules/
+.vercel/
+npm-debug.log*

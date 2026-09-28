@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="同伴辅导需求登记问卷">
+  <title>同伴辅导 · 需求登记</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <a class="brand" href="/" aria-label="同伴辅导首页">
+        <span class="brand-mark">P</span>
+        <span>Peerly 同伴辅导</span>
+      </a>
+      <div class="hero-copy">
+        <p class="eyebrow">LEARN TOGETHER · GROW TOGETHER</p>
+        <h1>找到适合你的<br><em>学习搭档</em></h1>
+        <p class="lead">告诉我们你的学习目标和时间安排。我们会认真阅读，并尽快与你联系。</p>
+        <div class="promise-list" aria-label="服务特点">
+          <span>✓ 约 3 分钟</span><span>✓ 信息保密</span><span>✓ 人工匹配</span>
+        </div>
+      </div>
+      <div class="orb orb-one"></div><div class="orb orb-two"></div>
+    </header>
+
+    <main class="form-card">
+      <div class="form-heading">
+        <span class="step">01</span>
+        <div><p class="kicker">需求登记</p><h2>先认识一下你</h2></div>
+      </div>
+      <form id="questionnaire">
+        <label class="website-field" aria-hidden="true">网站<input name="website" tabindex="-1" autocomplete="off"></label>
+        <div class="field-row">
+          <label class="field"><span>你的称呼 <b>*</b></span><input name="name" maxlength="60" autocomplete="name" placeholder="怎么称呼你？" required></label>
+          <label class="field"><span>联系方式 <b>*</b></span><input name="contact" maxlength="120" autocomplete="email" placeholder="微信 / 邮箱 / 手机号" required></label>
+        </div>
+        <fieldset class="field"><legend>你的身份 <b>*</b></legend><div class="choice-grid">
+          <label class="choice"><input type="radio" name="identity" value="我想找辅导" required><span><strong>我想找辅导</strong><small>解决难题，提升学习效率</small></span></label>
+          <label class="choice"><input type="radio" name="identity" value="我可以提供辅导"><span><strong>我可以提供辅导</strong><small>分享擅长的知识和经验</small></span></label>
+          <label class="choice"><input type="radio" name="identity" value="都可以"><span><strong>都可以</strong><small>互相学习，共同进步</small></span></label>
+        </div></fieldset>
+        <label class="field"><span>相关科目或方向 <b>*</b></span><input name="subjects" maxlength="200" placeholder="例如：高等数学、英语口语、Python" required></label>
+        <label class="field"><span>你希望达成什么目标？ <b>*</b></span><textarea name="goal" maxlength="1200" rows="4" placeholder="可以说说目前遇到的问题、期望的进度或擅长分享的内容……" required></textarea></label>
+        <div class="field-row">
+          <label class="field"><span>通常方便的时间 <b>*</b></span><input name="availability" maxlength="500" placeholder="例如：周二、周四晚 7 点后" required></label>
+          <label class="field"><span>偏好的辅导形式 <b>*</b></span><select name="mode" required><option value="">请选择</option><option>线上</option><option>线下</option><option>都可以</option></select></label>
+        </div>
+        <label class="field"><span>还有什么想告诉我们？ <i>选填</i></span><textarea name="notes" maxlength="1200" rows="3" placeholder="其他期待、注意事项等"></textarea></label>
+        <label class="consent"><input type="checkbox" name="consent" required><span>我同意所填信息仅用于本次辅导联系与匹配，不会公开展示。</span></label>
+        <button class="submit-button" type="submit"><span>提交我的登记</span><span aria-hidden="true">↗</span></button>
+        <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+  </div>
+  <footer><span>Peerly © 2026</span><span>让知识在人与人之间流动</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>

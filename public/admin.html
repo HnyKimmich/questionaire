@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>问卷管理 · Peerly</title><link rel="stylesheet" href="styles.css"></head>
+<body class="admin-page">
+  <section id="login-view" class="login-card">
+    <p class="kicker">PEERLY ADMIN</p><h1>管理问卷</h1><p>输入管理员密码，查看和导出收到的登记。</p>
+    <form id="login-form"><label class="field"><span>管理员密码</span><input type="password" name="password" autocomplete="current-password" required></label><button class="submit-button" type="submit"><span>登录</span><span>→</span></button><p id="login-message" class="form-message error"></p></form>
+  </section>
+  <main id="dashboard" class="admin-shell hidden">
+    <header class="admin-top"><div><p class="kicker">PEERLY ADMIN</p><h2>问卷回复</h2></div><div class="admin-actions"><a class="button-secondary" href="/api/admin/export">导出 CSV</a><button id="logout" class="button-secondary">退出</button></div></header>
+    <p class="stats">共收到 <strong id="count">0</strong> 份登记</p><section id="records" class="records"></section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>

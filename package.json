@@ -1,0 +1,14 @@
+{
+  "name": "peer-tutor-questionnaire",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A deployable questionnaire website with Vercel Functions and Supabase.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "vercel dev",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

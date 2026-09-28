@@ -55,10 +55,10 @@ function renderRank(question) {
   const byValue = new Map(question.options.map((raw) => { const option = optionData(raw); return [option.value, option]; }));
   const stored = Array.isArray(answers[question.id]) ? answers[question.id] : [];
   const order = [...stored, ...question.options.map((raw) => optionData(raw).value).filter((value) => !stored.includes(value))];
-  return `<div class="rank-help">拖动排序项或使用箭头调整顺序，排好后点击确认。</div><ol class="rank-list" data-question="${question.id}">${order.map((value, index) => {
+  return `<div class="rank-help">按住左侧手柄拖动排序，排好后点击确认。</div><ol class="rank-list" data-question="${question.id}">${order.map((value, index) => {
     const option = byValue.get(value);
     const details = answers[`${question.id}__detail`] || {};
-    return `<li data-value="${escapeHtml(value)}" draggable="true"><button class="drag-handle" type="button" aria-label="拖动排序">⠿</button><span class="rank-number">${index + 1}</span><div class="rank-content"><strong>${escapeHtml(option.label)}</strong>${option.detail || option.custom ? `<input class="rank-detail" data-question="${question.id}" data-option="${escapeHtml(value)}" value="${escapeHtml(details[value] || '')}" maxlength="160" placeholder="${option.custom ? '写下自定义内容' : '具体是？'}">` : ''}</div><div class="rank-controls"><button type="button" class="rank-up" aria-label="上移" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="rank-down" aria-label="下移" ${index === order.length - 1 ? 'disabled' : ''}>↓</button></div></li>`;
+    return `<li data-value="${escapeHtml(value)}" draggable="true"><span class="drag-handle" title="拖动排序" aria-hidden="true">⠿</span><span class="rank-number">${index + 1}</span><div class="rank-content"><strong>${escapeHtml(option.label)}</strong>${option.detail || option.custom ? `<input class="rank-detail" data-question="${question.id}" data-option="${escapeHtml(value)}" value="${escapeHtml(details[value] || '')}" maxlength="160" placeholder="${option.custom ? '写下自定义内容' : '具体是？'}">` : ''}</div></li>`;
   }).join('')}</ol><button class="confirm-rank${isAnswered(question) ? ' confirmed' : ''}" type="button" data-question="${question.id}">${isAnswered(question) ? '✓ 已确认，可继续调整' : '确认这个排序'}</button>`;
 }
 
@@ -78,8 +78,17 @@ function renderChapters() {
 function updateRankNumbers(list) {
   [...list.children].forEach((item, index) => {
     item.querySelector('.rank-number').textContent = index + 1;
-    item.querySelector('.rank-up').disabled = index === 0;
-    item.querySelector('.rank-down').disabled = index === list.children.length - 1;
+  });
+}
+
+function moveRankItem(item, target, placeBefore) {
+  const list = item.parentNode;
+  const positions = new Map([...list.children].map((child) => [child, child.getBoundingClientRect().top]));
+  list.insertBefore(item, placeBefore ? target : target.nextElementSibling);
+  updateRankNumbers(list);
+  [...list.children].forEach((child) => {
+    const distance = positions.get(child) - child.getBoundingClientRect().top;
+    if (distance) child.animate([{ transform: `translateY(${distance}px)` }, { transform: 'translateY(0)' }], { duration: 180, easing: 'cubic-bezier(.2,.8,.2,1)' });
   });
 }
 
@@ -164,12 +173,13 @@ showStep(0, false);
 form.elements.name.addEventListener('input', scheduleSave);
 navView.addEventListener('click', (event) => { const button = event.target.closest('[data-go]'); if (button) showStep(Number(button.dataset.go)); });
 previousButton.addEventListener('click', () => showStep(currentStep - 1));
-nextButton.addEventListener('click', () => {
+function advanceStep() {
   if (currentStep === 0 && !form.elements.name.value.trim()) {
     message.textContent = '请先填写姓名。'; message.classList.add('error'); form.elements.name.focus(); return;
   }
   message.textContent = ''; message.classList.remove('error'); showStep(currentStep + 1);
-});
+}
+nextButton.addEventListener('click', advanceStep);
 
 chaptersView.addEventListener('change', (event) => {
   if (event.target.matches('input[type="radio"],input[type="checkbox"]')) collectChoice(event.target);
@@ -186,12 +196,6 @@ chaptersView.addEventListener('input', (event) => {
   if (event.target.matches('.text-answer')) { answers[event.target.name] = event.target.value; refreshQuestion(event.target.name); scheduleSave(); }
 });
 chaptersView.addEventListener('click', (event) => {
-  const move = event.target.closest('.rank-up,.rank-down');
-  if (move) {
-    const item = move.closest('li'); const sibling = move.classList.contains('rank-up') ? item.previousElementSibling : item.nextElementSibling;
-    if (sibling) move.classList.contains('rank-up') ? item.parentNode.insertBefore(item, sibling) : item.parentNode.insertBefore(sibling, item);
-    updateRankNumbers(item.parentNode); storeRank(item.parentNode); return;
-  }
   const confirmButton = event.target.closest('.confirm-rank');
   if (confirmButton) {
     const list = document.querySelector(`.rank-list[data-question="${CSS.escape(confirmButton.dataset.question)}"]`);
@@ -201,9 +205,11 @@ chaptersView.addEventListener('click', (event) => {
 
 chaptersView.addEventListener('dragstart', (event) => {
   const item = event.target.closest('.rank-list li');
-  if (!item || event.target.closest('input,.rank-controls')) { event.preventDefault(); return; }
+  if (!item || event.target.closest('input')) { event.preventDefault(); return; }
   draggedRankItem = item;
   item.classList.add('dragging');
+  document.body.classList.add('rank-dragging');
+  item.setAttribute('aria-grabbed', 'true');
   event.dataTransfer.effectAllowed = 'move';
   event.dataTransfer.setData('text/plain', item.dataset.value);
 });
@@ -212,41 +218,47 @@ chaptersView.addEventListener('dragover', (event) => {
   if (!draggedRankItem || !target || target === draggedRankItem || target.parentNode !== draggedRankItem.parentNode) return;
   event.preventDefault();
   const box = target.getBoundingClientRect();
-  target.parentNode.insertBefore(draggedRankItem, event.clientY < box.top + box.height / 2 ? target : target.nextElementSibling);
-  updateRankNumbers(target.parentNode);
+  moveRankItem(draggedRankItem, target, event.clientY < box.top + box.height / 2);
 });
 chaptersView.addEventListener('drop', (event) => { if (draggedRankItem) event.preventDefault(); });
 chaptersView.addEventListener('dragend', () => {
   if (!draggedRankItem) return;
   const list = draggedRankItem.parentNode;
   draggedRankItem.classList.remove('dragging');
+  draggedRankItem.removeAttribute('aria-grabbed');
   draggedRankItem = null;
+  document.body.classList.remove('rank-dragging');
   updateRankNumbers(list); storeRank(list);
 });
 
 chaptersView.addEventListener('pointerdown', (event) => {
-  if (event.pointerType === 'mouse') return;
   const handle = event.target.closest('.drag-handle');
   if (!handle) return;
   event.preventDefault();
   const item = handle.closest('li');
   pointerRankDrag = { item, list: item.parentNode, pointerId: event.pointerId, handle };
   item.classList.add('dragging');
+  item.setAttribute('aria-grabbed', 'true');
+  document.body.classList.add('rank-dragging');
   try { handle.setPointerCapture(event.pointerId); } catch {}
 });
 window.addEventListener('pointermove', (event) => {
   if (!pointerRankDrag || event.pointerId !== pointerRankDrag.pointerId) return;
   event.preventDefault();
+  const edge = 76;
+  if (event.clientY < edge) window.scrollBy(0, -14);
+  else if (event.clientY > window.innerHeight - edge) window.scrollBy(0, 14);
   const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.rank-list li');
   if (!target || target === pointerRankDrag.item || target.parentNode !== pointerRankDrag.list) return;
   const box = target.getBoundingClientRect();
-  pointerRankDrag.list.insertBefore(pointerRankDrag.item, event.clientY < box.top + box.height / 2 ? target : target.nextElementSibling);
-  updateRankNumbers(pointerRankDrag.list);
+  moveRankItem(pointerRankDrag.item, target, event.clientY < box.top + box.height / 2);
 }, { passive: false });
 function finishPointerRank(event) {
   if (!pointerRankDrag || event.pointerId !== pointerRankDrag.pointerId) return;
   const { item, list, handle, pointerId } = pointerRankDrag;
   item.classList.remove('dragging');
+  item.removeAttribute('aria-grabbed');
+  document.body.classList.remove('rank-dragging');
   try { handle.releasePointerCapture(pointerId); } catch {}
   pointerRankDrag = null;
   updateRankNumbers(list); storeRank(list);
@@ -256,6 +268,7 @@ window.addEventListener('pointercancel', finishPointerRank);
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (currentStep < questionnaire.chapters.length) { advanceStep(); return; }
   const name = form.elements.name.value.trim();
   if (!name) { showStep(0); message.textContent = '请先填写姓名。'; message.classList.add('error'); return; }
   submitButton.disabled = true; submitButton.firstElementChild.textContent = '正在提交…'; message.textContent = '';

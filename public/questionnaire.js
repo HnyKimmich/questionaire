@@ -5,7 +5,7 @@
 })(typeof window !== 'undefined' ? window : null, function buildQuestionnaire() {
   return {
     version: '2026-09-29.2',
-    title: '在见面之前，先认识一下你',
+    title: '在见面之前，先听你说说自己',
     chapters: [
       {
         id: 'beliefs',
